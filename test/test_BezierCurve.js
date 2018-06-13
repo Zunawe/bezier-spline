@@ -1,4 +1,4 @@
-const {BezierCurve} = require('../src/index.js')
+const BezierCurve = require('../src/curve.js')
 const {assert} = require('chai')
 const vecn = require('vecn')
 
@@ -33,10 +33,10 @@ suite('BezierCurve', function () {
     let curve = new BezierCurve([1, 2, 3, 4])
 
     assert.deepEqual(curve.solve(), [])
-    assert.deepEqual(curve.solve(1), [0])
-    assert.deepEqual(curve.solve(2.5), [0.5])
+    assert.deepEqual(curve.solve(0, 1), [0])
+    assert.deepEqual(curve.solve(0, 2.5), [0.5])
 
     curve = new BezierCurve([1, 2, -2, 1])
-    assert.deepEqual(curve.solve(1), [0, 0.25, 1])
+    assert.deepEqual(curve.solve(0, 1), [0, 0.25, 1])
   })
 })
