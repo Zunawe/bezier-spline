@@ -1,4 +1,4 @@
-const {BezierCurve} = require('../index.js')
+const {BezierCurve} = require('../src/index.js')
 const {assert} = require('chai')
 const vecn = require('vecn')
 
