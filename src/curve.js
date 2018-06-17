@@ -18,9 +18,8 @@ class BezierCurve {
       writable: false
     })
 
-    let vec = vecn.getVecType(controlPoints[0].length)
     for (let i = 0; i < this.length; ++i) {
-      this[i] = vec(controlPoints[i])
+      this[i] = Array.from(controlPoints[i])
     }
   }
 
@@ -33,11 +32,14 @@ class BezierCurve {
   at (t) {
     t = t < 0 ? 0 : (t > 1 ? 1 : t)
 
+    let vec = vecn.getVecType(this[0].length)
+    let controlPoints = [...new Array(4)].map((_, i) => vec(this[i]))
+
     let terms = []
-    terms.push(this[0].times(Math.pow(1 - t, 3)))
-    terms.push(this[1].times(3 * Math.pow(1 - t, 2) * t))
-    terms.push(this[2].times(3 * (1 - t) * Math.pow(t, 2)))
-    terms.push(this[3].times(Math.pow(t, 3)))
+    terms.push(controlPoints[0].times(Math.pow(1 - t, 3)))
+    terms.push(controlPoints[1].times(3 * Math.pow(1 - t, 2) * t))
+    terms.push(controlPoints[2].times(3 * (1 - t) * Math.pow(t, 2)))
+    terms.push(controlPoints[3].times(Math.pow(t, 3)))
 
     return vecn.add(...terms).toArray()
   }
