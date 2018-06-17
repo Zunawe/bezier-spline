@@ -2,16 +2,23 @@ const vecn = require('vecn')
 
 /**
  * A class with a couple helper functions for working with Bezier curves in
- * multiple dimensions.
+ * multiple dimensions. Array-like with 4 elements.
  */
 class BezierCurve {
   /**
    * Creates a curve from control points.
-   * @param {*} controlPoints The control points that define a Bezier curve
+   * @param {number[][]} controlPoints The control points that define a Bezier curve
    */
-  constructor (controlPoints) {
+  constructor (controlPoints = [0, 0, 0, 0]) {
     let dim = controlPoints[0].length ? controlPoints[0].length : 1
-    this.controlPoints = controlPoints.map((v) => vecn.getVecType(dim)(v))
+    Reflect.defineProperty(this, 'length', {
+      value: 4,
+      enumerable: false,
+      writable: false
+    })
+    for (let i = 0; i < this.length; ++i) {
+      this[i] = vecn.getVecType(dim)(controlPoints[i])
+    }
   }
 
   /**
@@ -24,10 +31,10 @@ class BezierCurve {
     t = t < 0 ? 0 : (t > 1 ? 1 : t)
 
     let terms = []
-    terms.push(this.controlPoints[0].times(Math.pow(1 - t, 3)))
-    terms.push(this.controlPoints[1].times(3 * Math.pow(1 - t, 2) * t))
-    terms.push(this.controlPoints[2].times(3 * (1 - t) * Math.pow(t, 2)))
-    terms.push(this.controlPoints[3].times(Math.pow(t, 3)))
+    terms.push(this[0].times(Math.pow(1 - t, 3)))
+    terms.push(this[1].times(3 * Math.pow(1 - t, 2) * t))
+    terms.push(this[2].times(3 * (1 - t) * Math.pow(t, 2)))
+    terms.push(this[3].times(Math.pow(t, 3)))
 
     return vecn.add(...terms)
   }
@@ -40,7 +47,7 @@ class BezierCurve {
    * @returns {number[]} All real roots of the described equation on the interval [0, 1].
    */
   solve (axis = 0, value = 0) {
-    let points = this.controlPoints.map((v) => v[axis])
+    let points = Array.prototype.map.call(this, (v) => v[axis])
 
     let a = -points[0] + (3 * points[1]) - (3 * points[2]) + points[3]
     let b = (3 * points[0]) - (6 * points[1]) + (3 * points[2])

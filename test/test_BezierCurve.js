@@ -8,8 +8,7 @@ const {vec2} = vecn
 suite('BezierCurve', function () {
   test('constructor', function () {
     let curve = new BezierCurve([0, 1, 3, 5])
-    assert.exists(curve.controlPoints)
-    assert.deepEqual(curve.controlPoints[0], vec1(0))
+    assert.deepEqual(curve[0], vec1(0))
   })
 
   test('at', function () {
