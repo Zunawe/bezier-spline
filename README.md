@@ -26,7 +26,7 @@ let spline = new BezierSpline([
 ])
 ```
 
-You can access the control points of each curve with the `curves` property. Curves are described by vectors (including 1-dimensional vectors).
+You can access the control points of each curve with the `curves` property. Curves are array-like with 4 elements, which are control points.
 
 ```js
 let bezier0 = spline.curves[0]
@@ -35,7 +35,7 @@ bezier0[1]                // The first generated control point
 bezier0[2]                // The second generated control point
 bezier0[3]                // The second knot
 
-console.log(bezier0[0])   // vec2 [1, 3]
+console.log(bezier0[0])   // [ 1, 3 ]
 ```
 
 A large part of the point of this module is to be able to locate points on the spline by coordinate. For example, if we want to find where the spline above passes through `y = 3.14`:
