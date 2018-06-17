@@ -1,8 +1,14 @@
 {
   "name": "bezier-spline",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Creates splines using Bezier curves over an arbitrary number of dimensions.",
-  "keywords": ["spline", "bezier", "graphics", "path", "curve"],
+  "keywords": [
+    "spline",
+    "bezier",
+    "graphics",
+    "path",
+    "curve"
+  ],
   "main": "src/index.js",
   "files": [
     "src/*"
