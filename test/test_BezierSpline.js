@@ -1,6 +1,5 @@
 const BezierSpline = require('../src/index.js')
 const {assert} = require('chai')
-const {vec2} = require('vecn')
 
 suite('BezierSpline', function () {
   let spline
@@ -14,6 +13,6 @@ suite('BezierSpline', function () {
   })
 
   test('getPoints', function () {
-    assert.deepEqual(spline.getPoints(0, 1.5), [vec2(1.5, 3)])
+    assert.deepEqual(spline.getPoints(0, 1.5), [[1.5, 3]])
   })
 })

@@ -14,7 +14,7 @@ $ npm install bezier-spline
 
 ## Usage
 
-Work in Progress
+To create a spline, pass in knots. For `n` knots, `n-1` curves will be produced.
 
 ```js
 const BezierSpline = require('bezier-spline')
@@ -24,4 +24,57 @@ let spline = new BezierSpline([
 	[0, 4],
 	[5, 5]
 ])
+```
+
+You can access the control points of each curve with the `curves` property. Curves are described by vectors (including 1-dimensional vectors).
+
+```js
+let bezier0 = spline.curves[0]
+bezier0[0]                // The first knot
+bezier0[1]                // The first generated control point
+bezier0[2]                // The second generated control point
+bezier0[3]                // The second knot
+
+console.log(bezier0[0])   // vec2 [1, 3]
+```
+
+A large part of the point of this module is to be able to locate points on the spline by coordinate. For example, if we want to find where the spline above passes through `y = 3.14`:
+
+```js
+spline.getPoints(1, 3.14)
+[ [ 0.8599999999999999, 3.1400000000000006 ] ]
+```
+
+Or where `x = 0.5`:
+
+```js
+spline.getPoints(0, 2)
+[ [ 0.4999999999999999, 3.5 ],
+  [ 0.5000000000000002, 3.7178727167525807 ] ]
+```
+
+Notably, the results are not exact. We're dealing with lots of floating point addition and inverting functions twice, so this is expected. These splines are designed for graphical use; not mathematical.
+
+### Bezier Curves
+
+Individual curves can be solved similarly if necessary. `at` plugs in a clamped `t` value to the cubic Bezier equation.
+
+```js
+// Yeah, it's not a very curvy curve, but it makes the math easy
+let curve = new BezierSpline.BezierCurve([
+	[0, 0],
+	[1, 1],
+	[2, 2],
+	[3, 3]
+])
+
+curve.at(0.5)
+[ 1.5, 1.5 ]
+```
+
+And inversely, you can solve for the `t` values that correspond to particular values along an axis:
+
+```js
+curve.solve(0, 1.5)
+[ 0.5 ]
 ```

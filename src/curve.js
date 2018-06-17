@@ -9,15 +9,18 @@ class BezierCurve {
    * Creates a curve from control points.
    * @param {number[][]} controlPoints The control points that define a Bezier curve
    */
-  constructor (controlPoints = [0, 0, 0, 0]) {
-    let dim = controlPoints[0].length ? controlPoints[0].length : 1
+  constructor (controlPoints) {
+    controlPoints = controlPoints[0].length ? controlPoints : controlPoints.map((n) => [n])
+
     Reflect.defineProperty(this, 'length', {
       value: 4,
       enumerable: false,
       writable: false
     })
+
+    let vec = vecn.getVecType(controlPoints[0].length)
     for (let i = 0; i < this.length; ++i) {
-      this[i] = vecn.getVecType(dim)(controlPoints[i])
+      this[i] = vec(controlPoints[i])
     }
   }
 
@@ -25,7 +28,7 @@ class BezierCurve {
    * Evaluates the bezier curve at the given value of t.
    * @param {number} t The parameter to plug in. (Clamped to the interval [0, 1])
    *
-   * @returns {vecn} The point at which t equals the provided value.
+   * @returns {number[]} The point at which t equals the provided value.
    */
   at (t) {
     t = t < 0 ? 0 : (t > 1 ? 1 : t)
@@ -36,7 +39,7 @@ class BezierCurve {
     terms.push(this[2].times(3 * (1 - t) * Math.pow(t, 2)))
     terms.push(this[3].times(Math.pow(t, 3)))
 
-    return vecn.add(...terms)
+    return vecn.add(...terms).toArray()
   }
 
   /**
@@ -54,7 +57,10 @@ class BezierCurve {
     let c = -(3 * points[0]) + (3 * points[1])
     let d = points[0] - value
 
-    return solveCubic(a, b, c, d).map((r) => r === 0 ? 0 : r).filter((t) => t >= 0 && t <= 1).sort()
+    return solveCubic(a, b, c, d)
+      .map((r) => r === 0 ? 0 : r)
+      .filter((t) => t >= 0 && t <= 1)
+      .sort()
   }
 }
 

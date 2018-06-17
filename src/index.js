@@ -46,7 +46,7 @@ class BezierSpline {
    * @param {number} axis The index of the axis along which to solve (i.e. if your vectors are [x, y, z], 0 means solve for when x = value).
    * @param {number} value The value to solve for (i.e. a Bezier cubic is on the left of an equation and this value is on the right).
    *
-   * @returns {vecn[]} A list of all points on the spline where the specified axis is equal to the specified value.
+   * @returns {number[][]} A list of all points on the spline where the specified axis is equal to the specified value.
    */
   getPoints (axis, value) {
     return this.curves.map((curve) => {
@@ -55,7 +55,7 @@ class BezierSpline {
       return acc.concat(points)
     }, []).reduce((acc, point) => {
       return acc.some((p) => p.approximatelyEquals(point)) ? acc : acc.concat([point])
-    }, []).sort()
+    }, []).map((v) => Array.from(v)).sort()
   }
 }
 
