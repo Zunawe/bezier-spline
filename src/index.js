@@ -8,25 +8,25 @@ class BezierSpline {
   /**
    * Creates a new spline.
    * @param {number[][]} knots A list of points of equal dimension that the spline will pass through.
-   * @param {number} [stretchFactor=0] The curve of the first spline is arbitrary, so this determines how far away the first relevant control point is from the line between the first two knots.
    */
-  constructor (knots, stretchFactor = 0) {
+  constructor (knots) {
     knots = knots.map((v) => vecn.getVecType(knots[0].length)(v))
 
     this.curves = []
 
     let prevCurve = null
     for (let i = 0; i < knots.length - 1; ++i) {
-      let midpoint = knots[i].plus(knots[i + 1]).div(2)
-
       let controlPoint0, controlPoint1, controlPoint2, controlPoint3
       controlPoint0 = knots[i]
       if (i === 0) {
         controlPoint1 = knots[i]
-        controlPoint2 = midpoint.plus(getPerpendicular(knots[i + 1].minus(knots[i])).normalize().times(stretchFactor))
+        controlPoint2 = knots[i].times(2).minus(controlPoint1)
+      } else if (i === knots.length - 2) {
+        controlPoint1 = knots[i].times(2).minus(prevCurve[2])
+        controlPoint2 = knots[i].plus(controlPoint1).times(0.5)
       } else {
-        controlPoint1 = knots[i].minus(prevCurve[2].minus(knots[i]))
-        controlPoint2 = prevCurve[1].div(2).plus(prevCurve[2].neg()).plus(controlPoint1)
+        controlPoint1 = knots[i].times(2).minus(prevCurve[2])
+        controlPoint2 = knots[i].times(2).minus(controlPoint1)
       }
       controlPoint3 = knots[i + 1]
 
@@ -57,13 +57,6 @@ class BezierSpline {
       return acc.some((p) => p.approximatelyEquals(point)) ? acc : acc.concat([point])
     }, []).map((v) => Array.from(v)).sort()
   }
-}
-
-function getPerpendicular (v) {
-  var perp = vecn.getVecType(v.length)()
-  perp[0] = v[1]
-  perp[1] = -v[0]
-  return perp
 }
 
 module.exports = BezierSpline

@@ -13,6 +13,11 @@ suite('BezierSpline', function () {
   })
 
   test('getPoints', function () {
-    assert.deepEqual(spline.getPoints(0, 1.5), [[1.5, 3]])
+    let expected = [[1.5, 3]]
+    assert(spline.getPoints(0, 1.5).every((p, i) => {
+      return p.every((n, j) => {
+        return Math.abs(n - expected[i][j]) < 0.00000001
+      })
+    }))
   })
 })
