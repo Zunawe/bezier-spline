@@ -8,7 +8,8 @@ suite('BezierSpline', function () {
     spline = new BezierSpline([
       [1, 2],
       [2, 4],
-      [3, 3]
+      [3, 3],
+      [5, -2]
     ])
   })
 
@@ -19,5 +20,7 @@ suite('BezierSpline', function () {
         return Math.abs(n - expected[i][j]) < 0.00000001
       })
     }))
+
+    assert.doesNotThrow(() => spline.getPoints(1, 3))
   })
 })

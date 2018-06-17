@@ -54,7 +54,7 @@ class BezierSpline {
     }).reduce((acc, points) => {
       return acc.concat(points)
     }, []).reduce((acc, point) => {
-      return acc.some((p) => p.approximatelyEquals(point)) ? acc : acc.concat([point])
+      return acc.some((p) => p.every((n, i) => Math.min(n, point[i]) / Math.max(n, point[i]) > 0.999)) ? acc : acc.concat([point])
     }, []).map((v) => Array.from(v)).sort()
   }
 }

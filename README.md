@@ -42,15 +42,15 @@ A large part of the point of this module is to be able to locate points on the s
 
 ```js
 spline.getPoints(1, 3.14)
-[ [ 0.8599999999999999, 3.1400000000000006 ] ]
+[ [ 0.86, 3.1400000000000006 ] ]
 ```
 
 Or where `x = 0.5`:
 
 ```js
-spline.getPoints(0, 2)
-[ [ 0.4999999999999999, 3.5 ],
-  [ 0.5000000000000002, 3.7178727167525807 ] ]
+spline.getPoints(0, 0.5)
+[ [ 0.4999999999999992, 4.716223173379369 ],
+  [ 0.49999999999999994, 3.5 ] ]
 ```
 
 Notably, the results are not exact. We're dealing with lots of floating point addition and inverting functions twice, so this is expected. These splines are designed for graphical use; not mathematical.
