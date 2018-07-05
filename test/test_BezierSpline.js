@@ -14,13 +14,8 @@ suite('BezierSpline', function () {
   })
 
   test('getPoints', function () {
-    let expected = [[1.5, 3]]
-    assert(spline.getPoints(0, 1.5).every((p, i) => {
-      return p.every((n, j) => {
-        return Math.abs(n - expected[i][j]) < 0.00000001
-      })
-    }))
-
-    assert.doesNotThrow(() => spline.getPoints(1, 3))
+    assert.isNotEmpty(spline.getPoints(0, 1.5))
+    assert.isNotEmpty(spline.getPoints(1, 3.2))
+    assert.isEmpty(spline.getPoints(0, -1))
   })
 })

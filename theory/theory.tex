@@ -1,0 +1,119 @@
+\documentclass[10pt]{article}
+
+\usepackage{amsmath}
+\usepackage{setspace}
+
+\topmargin=-0.45in
+\evensidemargin=0in
+\oddsidemargin=0in
+\textwidth=6.5in
+\textheight=9.0in
+\headsep=0.25in
+
+\begin{document}
+	This is mostly for my own reference and understanding (at least for the moment), but there's no explanation for the numbers and methods used in the code, so that's here for now.
+
+	A bezier curve is defined by
+	\begin{equation}
+		\textbf{B}(t) = \textbf{P}_{0}(1-t)^{3} + 3\textbf{P}_{1}(1-t)^{2}t + 3\textbf{P}_{2}(1-t)t^{2} + \textbf{P}_{3}t^{3} \nonumber
+	\end{equation}
+	and lives on the interval $t\in[1,0]$. $\textbf{P}_{0}$ is the start point of the curve, and $\textbf{P}_{3}$ is the end point of the curve. $\textbf{P}_{1}$ and $\textbf{P}_{2}$ are the control points of the curve, and do not lie on the curve.
+
+	We're building a spline from these bezier curves, so naturally the endpoints of each curve should be the knots of the spline, and the endpoint of the previous curve should be the start point for the next curve. The spline will be described by $n$ knots $K_{i}$ where $i \in \{1, 2, \dots, n\}$. From this, I'll describe the ith curve of the spline as
+	\begin{equation}
+		\textbf{B}_{i}(t) = \textbf{K}_{i}(1-t)^{3} + 3\textbf{P}_{1,i}(1-t)^{2}t + 3\textbf{P}_{2,i}(1-t)t^{2} + \textbf{K}_{i+1}t^{3}
+	\end{equation}
+	where $i \in \{1, 2, \dots, n - 1\}$
+
+	We want this spline to be $C^{2}$ smooth, so we need the first and second derivatives, which are
+	\begin{equation}
+		\textbf{B}_{i}'(t) = -3\textbf{K}_{i}(1 - t)^{2} + 3\textbf{P}_{1,i}(1 - 4t + 3t^{2}) + 3\textbf{P}_{2,i}(2 - 3t)t + 3\textbf{K}_{i+1}t^{2}
+	\end{equation}
+	\begin{equation}
+		\textbf{B}_{i}''(t) = 6\textbf{K}_{i}(1 - t) + 6\textbf{P}_{1,i}(-2 + 3t) + 6\textbf{P}_{2,i}(1 - 3t) + 6\textbf{K}_{i+1}t
+	\end{equation}
+
+	The next thing we want to do is to constrain everything to be equal at the endpoints. We already know the position is the same at the endpoints because those are our knots. So first we find the values of the derivatives at the endpoints:
+	\begin{align*}
+		\textbf{B}_{i}'(0) &= -3\textbf{K}_{i} + 3\textbf{P}_{1,i}\\
+		\textbf{B}_{i}'(1) &= 3\textbf{K}_{i+1} - 3\textbf{P}_{2,i}
+	\end{align*}
+	\begin{align*}
+		\textbf{B}_{i}''(0) &= 6\textbf{K}_{i} - 12\textbf{P}_{1,i} + 6\textbf{P}_{2,i}\\
+		\textbf{B}_{i}''(1) &= 6\textbf{P}_{1,i} - 12\textbf{P}_{2,i} + 6\textbf{K}_{i+1}
+	\end{align*}
+	And then we set them equal to each other:
+	\begin{align}
+		\textbf{B}_{i}'(0) &= \textbf{B}_{i-1}'(1)\nonumber\\
+		-3\textbf{K}_{i} + 3\textbf{P}_{1,i} &= 3\textbf{K}_{i} - 3\textbf{P}_{2,i-1}\nonumber\\
+		\textbf{P}_{2,i-1} &= 2\textbf{K}_{i} - \textbf{P}_{1,i}
+	\end{align}
+	\begin{align}
+		\textbf{B}_{i}''(0) &= \textbf{B}_{i-1}''(1)\nonumber\\
+		6\textbf{K}_{i} - 12\textbf{P}_{1,i} + 6\textbf{P}_{2,i} &= 6\textbf{P}_{1,i-1} - 12\textbf{P}_{2,i-1} + 6\textbf{K}_{i}\nonumber\\
+		-2\textbf{P}_{1,i} + \textbf{P}_{2,i} - \textbf{P}_{1,i-1} + 2\textbf{P}_{2,i-1} &= \textbf{0}
+	\end{align}
+
+	We want to try to find the first control point of each spline first, and then we can plug those into (4) to get the second control point, so we can do some substitution with (5):
+	\begin{align}
+		-2\textbf{P}_{1,i} + \textbf{P}_{2,i} - \textbf{P}_{1,i-1} + 2\textbf{P}_{2,i-1} &= \textbf{0}\nonumber\\
+		-2\textbf{P}_{1,i} + 2\textbf{K}_{i+1} - \textbf{P}_{1,i+1} - \textbf{P}_{1,i-1} + 2(2\textbf{K}_{i} - \textbf{P}_{1,i}) &= \textbf{0}\nonumber\\
+		\textbf{P}_{1,i-1} + 4\textbf{P}_{1,i} + \textbf{P}_{1,i+1} &= 4\textbf{K}_{i} + 2\textbf{K}_{i+1}
+	\end{align}
+
+	(6) gives us most of a tridiagonal matrix, but we still a way to describe $\textbf{P}_{1,0}$ and $\textbf{P}_{1,n-2}$ to fully fill in the matrix. For those constraints, let's arbitrarily say that the endpoints of the spline should have second derivatives equal to the zero vector. That is,
+	$$\textbf{B}_{1}''(0) = \textbf{B}_{n-1}''(1) = \textbf{0}$$
+	\begin{align}
+		\textbf{B}_{1}''(0) = 6\textbf{K}_{1} - 12\textbf{P}_{1,1} + 6\textbf{P}_{2,1} &= \textbf{0}\nonumber\\
+		\textbf{K}_{1} - 2\textbf{P}_{1,1} + \textbf{P}_{2,1} &= \textbf{0}\nonumber\\
+		\textbf{K}_{1} - 2\textbf{P}_{1,1} + 2\textbf{K}_{2} - \textbf{P}_{1,2} &= \textbf{0}\nonumber\\
+		2\textbf{P}_{1,1} + \textbf{P}_{1,2} &= \textbf{K}_{1} + 2\textbf{K}_{2}
+	\end{align}
+	\begin{align*}
+		\textbf{B}_{n-1}''(1) = 6\textbf{P}_{1,n-1} - 12\textbf{P}_{2,n-1} + 6\textbf{K}_{n} &= \textbf{0}\\
+		\textbf{P}_{1,n-1} - 2\textbf{P}_{2,n-1} + \textbf{K}_{n} &= \textbf{0}\\
+		\textbf{P}_{1,n-1} - 2(\textbf{K}_{n} - \textbf{P}_{1,n}) + \textbf{K}_{n} &= \textbf{0}\\
+		2\textbf{P}_{1,n} &= -\textbf{K}_{n} + 4\textbf{K}_{n} - \textbf{P}_{1,n-1}\\
+		\textbf{P}_{1,n} &= \frac{1}{2}(3\textbf{K}_{n} - \textbf{P}_{1,n-1})
+	\end{align*}
+	\begin{align}
+		\textbf{P}_{1,n-2} + 4\textbf{P}_{1,n-1} + \textbf{P}_{1,n} &= 4\textbf{K}_{n-1} + 2\textbf{K}_{n}\nonumber\\
+		\textbf{P}_{1,n-2} + 4\textbf{P}_{1,n-1} + \frac{1}{2}(3\textbf{K}_{n} - \textbf{P}_{1,n-1}) &= 4\textbf{K}_{n-1} + 2\textbf{K}_{n}\nonumber\\
+		\textbf{P}_{1,n-2} + \frac{7}{2}\textbf{P}_{1,n-1} &= 4\textbf{K}_{n-1} + \frac{1}{2}\textbf{K}_{n}
+	\end{align}
+
+	And finally we get to a set of equations that can describe a tridiagonal matrix with (6), (7), and (8):
+	\begin{align*}
+		2\textbf{P}_{1,1} + \textbf{P}_{1,2} &= \textbf{K}_{1} + 2\textbf{K}_{2}\\
+		\textbf{P}_{1,i-1} + 4\textbf{P}_{1,i} + \textbf{P}_{1,i+1} &= 4\textbf{K}_{i} + 2\textbf{K}_{i+1}, \mathrm{for\ } i \in \{2, 3, \dots, n-2\}\\
+		\textbf{P}_{1,n-2} + \frac{7}{2}\textbf{P}_{1,n-1} &= 4\textbf{K}_{n-1} + \frac{1}{2}\textbf{K}_{n}
+	\end{align*}
+
+	This creates the following equation:
+	$$
+	\begin{pmatrix}
+		2 & 1 &   &   &   & 0 \\
+		1 & 4 & 1 \\
+		\ & 1 & 4 & 1 \\
+		\ & \ & \ddots & \ddots & \ddots \\
+		\ & \ & \ & 1 & 4 & 1 \\
+		0 & \ & \ & \ & 1 & 7/2
+	\end{pmatrix}
+	\begin{pmatrix}
+		\textbf{P}_{1,1} \\
+		\textbf{P}_{1,2} \\
+		\vdots \\
+		\textbf{P}_{1,n-1}
+	\end{pmatrix}
+	=
+	\begin{pmatrix}
+		\textbf{K}_{1} + 2\textbf{K}_{2} \\
+		4\textbf{K}_{2} + 2\textbf{K}_{3} \\
+		4\textbf{K}_{3} + 2\textbf{K}_{4} \\
+		\vdots \\
+		4\textbf{K}_{n-2} + 2\textbf{K}_{n-1} \\
+		4\textbf{K}_{n-1} + \frac{1}{2}\textbf{K}_{n}
+	\end{pmatrix}
+	$$
+	which can be solved with the Thomas algorithm in $O(n)$ operations.
+\end{document}
