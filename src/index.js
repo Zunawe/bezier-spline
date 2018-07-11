@@ -20,25 +20,39 @@ class BezierSpline {
     const n = this.knots.length
     this.curves = []
 
-    let a = (new Array(n - 1)).fill(1)
-    a[0] = 0
-    let b = (new Array(n - 1)).fill(4)
-    b[0] = 2
-    b[n - 2] = 3.5
-    let c = (new Array(n - 1)).fill(1)
-    c[n - 2] = 0
-
-    let d = new Array(n - 1)
-    d[0] = this.knots[0].plus(this.knots[1].times(2))
-    for (let i = 1; i < n - 2; ++i) {
-      d[i] = this.knots[i].times(4).plus(this.knots[i + 1].times(2))
+    let k = new Array(n)
+    for (let i = 1; i < n - 1; ++i) {
+      let w1 = this.knots[i].minus(this.knots[i - 1]).magnitude
+      let w2 = this.knots[i + 1].minus(this.knots[i]).magnitude
+      k[i] = (w1 / w2)
     }
-    d[n - 2] = this.knots[n - 2].times(4).plus(this.knots[n - 1].times(0.5))
+
+    let a = new Array(n - 1)
+    let b = new Array(n - 1)
+    let c = new Array(n - 1)
+    let d = new Array(n - 1)
+
+    a[0] = 0
+    b[0] = 2
+    c[0] = k[1]
+    d[0] = this.knots[0].plus(this.knots[1].times(1 + k[1]))
+    for (let i = 1; i < n - 2; ++i) {
+      a[i] = 1
+      b[i] = 2 * (k[i] + (k[i] * k[i]))
+      c[i] = k[i + 1] * k[i] * k[i]
+      d[i] = this.knots[i].times(1 + (2 * k[i]) + (k[i] * k[i]))
+        .plus(this.knots[i + 1].times(1 + k[i + 1]).times(k[i] * k[i]))
+    }
+    a[n - 2] = 1
+    b[n - 2] = (2 * k[n - 2]) + (1.5 * k[n - 2] * k[n - 2])
+    c[n - 2] = 0
+    d[n - 2] = this.knots[n - 2].times(1 + (2 * k[n - 2]) + (k[n - 2] * k[n - 2]))
+      .plus(this.knots[n - 1].times(0.5 * k[n - 2] * k[n - 2]))
 
     let p1s = thomas(a, b, c, d)
     let p2s = []
     for (let i = 0; i < n - 2; ++i) {
-      p2s.push(this.knots[i + 1].times(2).minus(p1s[i + 1]))
+      p2s.push(this.knots[i + 1].minus(p1s[i + 1].minus(this.knots[i + 1]).times(k[i + 1])))
     }
     p2s.push(this.knots[n - 1].plus(p1s[n - 2]).times(0.5))
 
