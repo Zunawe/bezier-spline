@@ -3,6 +3,9 @@
 \usepackage{amsmath}
 \usepackage{setspace}
 
+\renewcommand{\vec}[1]{\mathbf{#1}}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+
 \topmargin=-0.45in
 \evensidemargin=0in
 \oddsidemargin=0in
@@ -11,85 +14,133 @@
 \headsep=0.25in
 
 \begin{document}
-	This is mostly for my own reference and understanding (at least for the moment), but there's no explanation for the numbers and methods used in the code, so that's here for now.
+	This document is meant to explain the theory and rationale behind the code
+	found in the \texttt{BezierSpline.recalculate} function. Understanding the
+	math requires some basic calculus and linear algebra as well as good spacial
+	reasoning. Given that, let's start from the top.
 
-	A bezier curve is defined by
+	Our goal here is to create a mathematical description for a spline. The
+	reason I started this project was to draw a 2-dimensional spline to try to
+	represent hills, so the ultimate goal and the examples given will be in that
+	vein, but there shouldn't be much in the way of understanding other uses
+	(pathing in a game, for instance). A spline is a piecewise polynomial
+	parametric curve that goes through specified points, which we call knots.
+	Generally, we want these curves to look natural, so a linear solution is not
+	satisfying. The Bezier part of ``Bezier Spline'' is a Bezier curve.
+	Specifically, a cubic Bezier curve. These curves are pretty well-known in
+	computing, and it's not uncommon that they're supported in graphics
+	software, which means it would be pretty easy to turn the result of this
+	spline into something visible. So, the first thing to do is define a cubic
+	Bezier curve, and then we'll worry about connecting these curves.
+
+	A cubic Bezier curve is defined by
 	\begin{equation}
-		\textbf{B}(t) = \textbf{P}_{0}(1-t)^{3} + 3\textbf{P}_{1}(1-t)^{2}t + 3\textbf{P}_{2}(1-t)t^{2} + \textbf{P}_{3}t^{3} \nonumber
+		\vec{B}(t) = \vec{P}_{0}(1-t)^{3} + 3\vec{P}_{1}(1-t)^{2}t + 3\vec{P}_{2}(1-t)t^{2} + \vec{P}_{3}t^{3} \nonumber
 	\end{equation}
-	and lives on the interval $t\in[1,0]$. $\textbf{P}_{0}$ is the start point of the curve, and $\textbf{P}_{3}$ is the end point of the curve. $\textbf{P}_{1}$ and $\textbf{P}_{2}$ are the control points of the curve, and do not lie on the curve.
+	and lives on the interval $t\in[1,0]$. $\vec{P}_{0}$ is the start point
+	of the curve, and $\vec{P}_{3}$ is the end point of the curve.
+	$\vec{P}_{1}$ and $\vec{P}_{2}$ are the control points of the curve,
+	and do not lie on the curve.
 
-	We're building a spline from these bezier curves, so naturally the endpoints of each curve should be the knots of the spline, and the endpoint of the previous curve should be the start point for the next curve. The spline will be described by $n$ knots $K_{i}$ where $i \in \{1, 2, \dots, n\}$. From this, I'll describe the ith curve of the spline as
+	We're building a spline from these bezier curves, so naturally the endpoints
+	of each curve should be the knots of the spline, and the endpoint of the
+	previous curve should be the start point for the next curve. The spline will
+	be described by $n$ knots $K_{i}$ where $i \in \{1, 2, \dots, n\}$. From
+	this, I'll describe the $i$th curve of the spline as
 	\begin{equation}
-		\textbf{B}_{i}(t) = \textbf{K}_{i}(1-t)^{3} + 3\textbf{P}_{1,i}(1-t)^{2}t + 3\textbf{P}_{2,i}(1-t)t^{2} + \textbf{K}_{i+1}t^{3}
+		\vec{B}_{i}(t) = \vec{K}_{i}(1-t)^{3} + 3\vec{P}_{1,i}(1-t)^{2}t + 3\vec{P}_{2,i}(1-t)t^{2} + \vec{K}_{i+1}t^{3}
 	\end{equation}
 	where $i \in \{1, 2, \dots, n - 1\}$
 
-	We want this spline to be $C^{2}$ smooth, so we need the first and second derivatives, which are
+	We want this spline to be $C^{2}$ continuous, meaning the first and second
+	derivatives are equal at the transition between curves (much more on
+	continuity later), so we need the first and second derivatives.
 	\begin{equation}
-		\textbf{B}_{i}'(t) = -3\textbf{K}_{i}(1 - t)^{2} + 3\textbf{P}_{1,i}(1 - 4t + 3t^{2}) + 3\textbf{P}_{2,i}(2 - 3t)t + 3\textbf{K}_{i+1}t^{2}
+		\vec{B}_{i}'(t) = -3\vec{K}_{i}(1 - t)^{2} + 3\vec{P}_{1,i}(1 - 4t + 3t^{2}) + 3\vec{P}_{2,i}(2 - 3t)t + 3\vec{K}_{i+1}t^{2}
 	\end{equation}
 	\begin{equation}
-		\textbf{B}_{i}''(t) = 6\textbf{K}_{i}(1 - t) + 6\textbf{P}_{1,i}(-2 + 3t) + 6\textbf{P}_{2,i}(1 - 3t) + 6\textbf{K}_{i+1}t
+		\vec{B}_{i}''(t) = 6\vec{K}_{i}(1 - t) + 6\vec{P}_{1,i}(-2 + 3t) + 6\vec{P}_{2,i}(1 - 3t) + 6\vec{K}_{i+1}t
 	\end{equation}
 
-	The next thing we want to do is to constrain everything to be equal at the endpoints. We already know the position is the same at the endpoints because those are our knots. So first we find the values of the derivatives at the endpoints:
+	The next thing we want to do is to constrain everything to be equal at the
+	endpoints. We already know the position is the same at the endpoints because
+	those are our knots, So first we find the values of the derivatives at the
+	endpoints:
 	\begin{align*}
-		\textbf{B}_{i}'(0) &= -3\textbf{K}_{i} + 3\textbf{P}_{1,i}\\
-		\textbf{B}_{i}'(1) &= 3\textbf{K}_{i+1} - 3\textbf{P}_{2,i}
+		\vec{B}_{i}'(0) &= -3\vec{K}_{i} + 3\vec{P}_{1,i}\\
+		\vec{B}_{i}'(1) &= -3\vec{P}_{2,i} + 3\vec{K}_{i+1}
 	\end{align*}
 	\begin{align*}
-		\textbf{B}_{i}''(0) &= 6\textbf{K}_{i} - 12\textbf{P}_{1,i} + 6\textbf{P}_{2,i}\\
-		\textbf{B}_{i}''(1) &= 6\textbf{P}_{1,i} - 12\textbf{P}_{2,i} + 6\textbf{K}_{i+1}
+		\vec{B}_{i}''(0) &= 6\vec{K}_{i} - 12\vec{P}_{1,i} + 6\vec{P}_{2,i}\\
+		\vec{B}_{i}''(1) &= 6\vec{P}_{1,i} - 12\vec{P}_{2,i} + 6\vec{K}_{i+1}
 	\end{align*}
 	And then we set them equal to each other:
 	\begin{align}
-		\textbf{B}_{i}'(0) &= \textbf{B}_{i-1}'(1)\nonumber\\
-		-3\textbf{K}_{i} + 3\textbf{P}_{1,i} &= 3\textbf{K}_{i} - 3\textbf{P}_{2,i-1}\nonumber\\
-		\textbf{P}_{2,i-1} &= 2\textbf{K}_{i} - \textbf{P}_{1,i}
+		\vec{B}_{i}'(0) &= \vec{B}_{i-1}'(1)\nonumber\\
+		-3\vec{K}_{i} + 3\vec{P}_{1,i} &= 3\vec{K}_{i} - 3\vec{P}_{2,i-1}\nonumber\\
+		\vec{P}_{2,i-1} &= 2\vec{K}_{i} - \vec{P}_{1,i}
 	\end{align}
 	\begin{align}
-		\textbf{B}_{i}''(0) &= \textbf{B}_{i-1}''(1)\nonumber\\
-		6\textbf{K}_{i} - 12\textbf{P}_{1,i} + 6\textbf{P}_{2,i} &= 6\textbf{P}_{1,i-1} - 12\textbf{P}_{2,i-1} + 6\textbf{K}_{i}\nonumber\\
-		-2\textbf{P}_{1,i} + \textbf{P}_{2,i} - \textbf{P}_{1,i-1} + 2\textbf{P}_{2,i-1} &= \textbf{0}
+		\vec{B}_{i}''(0) &= \vec{B}_{i-1}''(1)\nonumber\\
+		6\vec{K}_{i} - 12\vec{P}_{1,i} + 6\vec{P}_{2,i} &= 6\vec{P}_{1,i-1} - 12\vec{P}_{2,i-1} + 6\vec{K}_{i}\nonumber\\
+		-\vec{P}_{1,i-1} + 2\vec{P}_{2,i-1} - 2\vec{P}_{1,i} + \vec{P}_{2,i} &= \vec{0}
 	\end{align}
 
-	We want to try to find the first control point of each spline first, and then we can plug those into (4) to get the second control point, so we can do some substitution with (5):
+	Now, we have equations (4) and (5) that describe constraints on each curve.
+	Remember, we already know the knots, so this problem is about solving for
+	all the $\vec{P}_{1}$'s and $\vec{P}_{2}$'s. You'll notice that equation (4)
+	is particularly handy if we happen to have all the $\vec{P}_{1}$'s, so let's
+	try solving for just those for now. We'll need an equation containing only
+	$\vec{P}_{1}$'s and known values, so let's do some substitution.
 	\begin{align}
-		-2\textbf{P}_{1,i} + \textbf{P}_{2,i} - \textbf{P}_{1,i-1} + 2\textbf{P}_{2,i-1} &= \textbf{0}\nonumber\\
-		-2\textbf{P}_{1,i} + 2\textbf{K}_{i+1} - \textbf{P}_{1,i+1} - \textbf{P}_{1,i-1} + 2(2\textbf{K}_{i} - \textbf{P}_{1,i}) &= \textbf{0}\nonumber\\
-		\textbf{P}_{1,i-1} + 4\textbf{P}_{1,i} + \textbf{P}_{1,i+1} &= 4\textbf{K}_{i} + 2\textbf{K}_{i+1}
+		-\vec{P}_{1,i-1} + 2\vec{P}_{2,i-1} - 2\vec{P}_{1,i} + \vec{P}_{2,i} &= \vec{0}\nonumber\\
+		-\vec{P}_{1,i-1} + 2(2\vec{K}_{i} - \vec{P}_{1,i}) - 2\vec{P}_{1,i} + (2\vec{K}_{i+1} - \vec{P}_{1,i+1}) &= \vec{0}\nonumber\\
+		\vec{P}_{1,i-1} + 4\vec{P}_{1,i} + \vec{P}_{1,i+1} &= 4\vec{K}_{i} + 2\vec{K}_{i+1}
 	\end{align}
 
-	(6) gives us most of a tridiagonal matrix, but we still a way to describe $\textbf{P}_{1,0}$ and $\textbf{P}_{1,n-2}$ to fully fill in the matrix. For those constraints, let's arbitrarily say that the endpoints of the spline should have second derivatives equal to the zero vector. That is,
-	$$\textbf{B}_{1}''(0) = \textbf{B}_{n-1}''(1) = \textbf{0}$$
+	Equation (6) is going to be very useful in creating a matrix. We have $n-1$
+	unknowns (for $n-1$ curves), and equation (6) is actually $n-3$ valid
+	equations when you vary $i$. Where we can't use equation (6) is the first
+	and last row of our matrix; if $i=1$, we would need to use the value of
+	$\vec{P}_{1,0}$, which doesn't exist. The same thing with $i=n-1$ and
+	$\vec{P}_{1,n}$. So we need constraints for the endpoints of the spline.
+	Rather arbitrarily, we can impose the restriction that the second derivative
+	must be equal to $\vec{0}$ at the endpoints. That is,
+	$\vec{B}_{1}''(0) = \vec{B}_{n-1}''(1) = \vec{0}$. We'll use equation (4)
+	again to turn $\vec{P}_{2}$'s into $\vec{P}_{1}$'s and $\vec{K}$'s.
 	\begin{align}
-		\textbf{B}_{1}''(0) = 6\textbf{K}_{1} - 12\textbf{P}_{1,1} + 6\textbf{P}_{2,1} &= \textbf{0}\nonumber\\
-		\textbf{K}_{1} - 2\textbf{P}_{1,1} + \textbf{P}_{2,1} &= \textbf{0}\nonumber\\
-		\textbf{K}_{1} - 2\textbf{P}_{1,1} + 2\textbf{K}_{2} - \textbf{P}_{1,2} &= \textbf{0}\nonumber\\
-		2\textbf{P}_{1,1} + \textbf{P}_{1,2} &= \textbf{K}_{1} + 2\textbf{K}_{2}
+		\vec{B}_{1}''(0) = 6\vec{K}_{1} - 12\vec{P}_{1,1} + 6\vec{P}_{2,1} &= \vec{0}\nonumber\\
+		\vec{K}_{1} - 2\vec{P}_{1,1} + \vec{P}_{2,1} &= \vec{0}\nonumber\\
+		\vec{K}_{1} - 2\vec{P}_{1,1} + (2\vec{K}_{2} - \vec{P}_{1,2}) &= \vec{0}\nonumber\\
+		2\vec{P}_{1,1} + \vec{P}_{1,2} &= \vec{K}_{1} + 2\vec{K}_{2}
 	\end{align}
+	And now we have a valid equation for the first row of our matrix.
+
+	The other endpoint is a little more involved. When we substitute (4) in,
+	we'll end up with another $\vec{P}_{1,n}$. We'll solve for this one and plug
+	it into equation (6) to get rid of it.
 	\begin{align*}
-		\textbf{B}_{n-1}''(1) = 6\textbf{P}_{1,n-1} - 12\textbf{P}_{2,n-1} + 6\textbf{K}_{n} &= \textbf{0}\\
-		\textbf{P}_{1,n-1} - 2\textbf{P}_{2,n-1} + \textbf{K}_{n} &= \textbf{0}\\
-		\textbf{P}_{1,n-1} - 2(\textbf{K}_{n} - \textbf{P}_{1,n}) + \textbf{K}_{n} &= \textbf{0}\\
-		2\textbf{P}_{1,n} &= -\textbf{K}_{n} + 4\textbf{K}_{n} - \textbf{P}_{1,n-1}\\
-		\textbf{P}_{1,n} &= \frac{1}{2}(3\textbf{K}_{n} - \textbf{P}_{1,n-1})
+		\vec{B}_{n-1}''(1) = 6\vec{P}_{1,n-1} - 12\vec{P}_{2,n-1} + 6\vec{K}_{n} &= \vec{0}\\
+		\vec{P}_{1,n-1} - 2\vec{P}_{2,n-1} + \vec{K}_{n} &= \vec{0}\\
+		\vec{P}_{1,n-1} - 2(2\vec{K}_{n} - \vec{P}_{1,n}) + \vec{K}_{n} &= \vec{0}\\
+		2\vec{P}_{1,n} &= -\vec{K}_{n} + 4\vec{K}_{n} - \vec{P}_{1,n-1}\\
+		\vec{P}_{1,n} &= \frac{1}{2}(3\vec{K}_{n} - \vec{P}_{1,n-1})
 	\end{align*}
 	\begin{align}
-		\textbf{P}_{1,n-2} + 4\textbf{P}_{1,n-1} + \textbf{P}_{1,n} &= 4\textbf{K}_{n-1} + 2\textbf{K}_{n}\nonumber\\
-		\textbf{P}_{1,n-2} + 4\textbf{P}_{1,n-1} + \frac{1}{2}(3\textbf{K}_{n} - \textbf{P}_{1,n-1}) &= 4\textbf{K}_{n-1} + 2\textbf{K}_{n}\nonumber\\
-		\textbf{P}_{1,n-2} + \frac{7}{2}\textbf{P}_{1,n-1} &= 4\textbf{K}_{n-1} + \frac{1}{2}\textbf{K}_{n}
+		\vec{P}_{1,n-2} + 4\vec{P}_{1,n-1} + \vec{P}_{1,n} &= 4\vec{K}_{n-1} + 2\vec{K}_{n}\nonumber\\
+		\vec{P}_{1,n-2} + 4\vec{P}_{1,n-1} + \frac{1}{2}(3\vec{K}_{n} - \vec{P}_{1,n-1}) &= 4\vec{K}_{n-1} + 2\vec{K}_{n}\nonumber\\
+		\vec{P}_{1,n-2} + \frac{7}{2}\vec{P}_{1,n-1} &= 4\vec{K}_{n-1} + \frac{1}{2}\vec{K}_{n}
 	\end{align}
 
-	And finally we get to a set of equations that can describe a tridiagonal matrix with (6), (7), and (8):
+	And finally we get to a set of equations that can describe a tridiagonal
+	matrix with (6), (7), and (8):
 	\begin{align*}
-		2\textbf{P}_{1,1} + \textbf{P}_{1,2} &= \textbf{K}_{1} + 2\textbf{K}_{2}\\
-		\textbf{P}_{1,i-1} + 4\textbf{P}_{1,i} + \textbf{P}_{1,i+1} &= 4\textbf{K}_{i} + 2\textbf{K}_{i+1}, \mathrm{for\ } i \in \{2, 3, \dots, n-2\}\\
-		\textbf{P}_{1,n-2} + \frac{7}{2}\textbf{P}_{1,n-1} &= 4\textbf{K}_{n-1} + \frac{1}{2}\textbf{K}_{n}
+		2\vec{P}_{1,1} + \vec{P}_{1,2} &= \vec{K}_{1} + 2\vec{K}_{2}\\
+		\vec{P}_{1,i-1} + 4\vec{P}_{1,i} + \vec{P}_{1,i+1} &= 4\vec{K}_{i} + 2\vec{K}_{i+1}, \mathrm{for\ } i \in \{2, 3, \dots, n-2\}\\
+		\vec{P}_{1,n-2} + \frac{7}{2}\vec{P}_{1,n-1} &= 4\vec{K}_{n-1} + \frac{1}{2}\vec{K}_{n}
 	\end{align*}
 
-	This creates the following equation:
+	This creates the following matrix equation:
 	$$
 	\begin{pmatrix}
 		2 & 1 &   &   &   & 0 \\
@@ -100,20 +151,239 @@
 		0 & \ & \ & \ & 1 & 7/2
 	\end{pmatrix}
 	\begin{pmatrix}
-		\textbf{P}_{1,1} \\
-		\textbf{P}_{1,2} \\
+		\vec{P}_{1,1} \\
+		\vec{P}_{1,2} \\
 		\vdots \\
-		\textbf{P}_{1,n-1}
+		\vec{P}_{1,n-1}
 	\end{pmatrix}
 	=
 	\begin{pmatrix}
-		\textbf{K}_{1} + 2\textbf{K}_{2} \\
-		4\textbf{K}_{2} + 2\textbf{K}_{3} \\
-		4\textbf{K}_{3} + 2\textbf{K}_{4} \\
+		\vec{K}_{1} + 2\vec{K}_{2} \\
+		4\vec{K}_{2} + 2\vec{K}_{3} \\
+		4\vec{K}_{3} + 2\vec{K}_{4} \\
 		\vdots \\
-		4\textbf{K}_{n-2} + 2\textbf{K}_{n-1} \\
-		4\textbf{K}_{n-1} + \frac{1}{2}\textbf{K}_{n}
+		4\vec{K}_{n-2} + 2\vec{K}_{n-1} \\
+		4\vec{K}_{n-1} + \frac{1}{2}\vec{K}_{n}
 	\end{pmatrix}
 	$$
-	which can be solved with the Thomas algorithm in $O(n)$ operations.
+	This type of matrix is called a tridiagonal matrix, and that's good because
+	we can use the Thomas algorithm to solve it in $O(n)$ operations rather than
+	the $O(n^{3})$ operations Gaussian elimination takes.
+
+	Once we have all the $\vec{P}_{1}$s, we need to get the $\vec{P}_{2}$s,
+	which is relatively trivial. For $i \in \{1, 2, \dots, n - 1\}$, we can use
+	equation (4). We can't use equation (4) for $\vec{P}_{2,n-1}$ because
+	$\vec{P}_{1,n}$ doesn't exist. Instead, we'll use what follows from our
+	constraint that the curve's second derivative is equal to $\vec{0}$ at the end of
+	the spline.
+	\begin{align}
+		\vec{P}_{1,n-1} - 2\vec{P}_{2,n-1} + \vec{K}_{n} &= \vec{0}\nonumber\\
+		\vec{P}_{1,n-1} + \vec{K}_{n} &= 2\vec{P}_{2,n-1}\nonumber\\
+		\frac{1}{2}(\vec{P}_{1,n-1} + \vec{K}_{n}) &= \vec{P}_{2,n-1}
+	\end{align}
+
+	Now we've got all the control points for every segment of our spline. Worth
+	noting is that this type of spline is a global problem. Move one knot, and
+	the whole spline has to be recalculated. This is in contrast to something
+	like a B-spline, which is a local problem.
+
+	\clearpage
+
+	Now, the above solution is mathematically pretty, and $C^{2}$ continuity
+	is all you'll need for most applications. I'll actually argue though that
+	it's too much in some cases. In animation, splines might be used for
+	smoothly moving a component from one location to another with stops in
+	between. In this sort of case, $C^{2}$ continuity is necessary or else
+	things look weird and jumpy. In these sorts of instances, $t$ represents
+	time, and it takes 1 unit of time to traverse from one knot to another.
+	We'll simplify that use case to a particle moving along a path. In graphical
+	use cases, time isn't relevant; only the shape of the curve. So for
+	particles, we care that the first derivative of the path (velocity) is
+	equivalent at the knots. For graphics, we only want the curve to be pointing
+	in the same direction at the knots. That's where $G^{1}$ continuity comes
+	in.
+
+	Let's take a set of knots where $\vec{K}_{1}$ and $\vec{K}_{2}$ are far
+	apart relative to $\vec{K}_{2}$ and $\vec{K}_{3}$. It takes the particle
+	1 second to get to $\vec{K}_{2}$, so it needs to accelerate a good amount
+	and get going pretty fast. Once it hits $\vec{K}_{2}$, it's got a lot of
+	speed, but now it has to take an entire second to get to $\vec{K}_{3}$.
+	Typically, this means it'll take a loop and come back around to
+	$\vec{K}_{3}$. You can see this in the math pretty easily too. If we go back
+	to equation (4) and rewrite it a bit
+	\begin{align*}
+		\vec{P}_{2,i-1} &= 2\vec{K}_{i}-\vec{P}_{1,i}\\
+		\vec{P}_{1,i} &= 2\vec{K}_{i}-\vec{P}_{2,i-1}\\
+		\vec{P}_{1,i} &= \vec{K}_{i}+(\vec{K}_{i}-\vec{P}_{2,i-1})
+	\end{align*}
+	Our first control point is as far from the first knot as the previous second
+	control point was, so the curve gets pulled far from the first knot. But
+	the path needs to get back to the second knot, and if the second knot is
+	``behind'' the first control point, it does a loop. If we're in animation
+	land or particle land, it's good that the particle doesn't instantaneously
+	slow down between knots. To solve the problem, we need to adjust our knots.
+	In graphics land, we didn't want a loop; we wanted our spline to make a nice
+	smooth-looking curve that happens to have to stop through two nearby points.
+	So, for the graphics use case, we'll relax our $C^{2}$ continuity to $G^{2}$
+	continuity, and use that to pull the control points back in. Where $C^{1}$
+	continuity requires the first derivatives at the connections to be
+	identical, $G^{1}$ continuity only requires the tangent vectors to point in
+	the same direction. $C^{2}$ continuity requires $C^{1}$ continuity and that
+	the second derivatives at the connections be identical while $G^{2}$
+	continuity requires $G^{1}$ continuity and that curvature is continuous,
+	which also means the second derivatives point in the same direction. This
+	also means that $C^{2}$ continuity is $G^{2}$ continuous, so we can work off
+	what we've already done.
+
+	To start, we'll rewrite our constraints to be more forgiving:
+	\begin{align*}
+		c_{i}\vec{B}_{i}'(0) &= \vec{B}_{i-1}'(1)\nonumber\\
+		d_{i}\vec{B}_{i}''(0) &= \vec{B}_{i-1}''(1)\nonumber
+	\end{align*}
+	Continuous tangency is satisfied here because the first derivatives are
+	just scalar multiples of each other, so we can choose $c_{i}$ to be anything
+	we want. It can even be different for every $i$. $d_{i}$ could also be
+	whatever we want, but there's a relationship between $c_{i}$ and $d_{i}$
+	that we must enforce to keep curvature constant. We'll use the definition
+	of curvature to find $d_{i}$ in terms of $c_{i}$.
+
+	Curvature, $\kappa$, is defined in terms of $t$ as
+	$$\kappa(t) = \frac{\norm{\vec{T}'(t)}}{\norm{\vec{B}'(t)}}$$
+	Where
+	$$\vec{T}(t) = \frac{\vec{B}'(t)}{\norm{\vec{B}'(t)}}$$
+	Using the quotient rule, we can find that
+	$$\vec{T}'(t) = \frac{\vec{B}''(t)}{\norm{\vec{B}'(t)}} - \frac{(\vec{B}'(t)\cdot\vec{B}''(t))\vec{B}'(t)}{\norm{\vec{B}'(t)}^{3}}$$
+	(The last page of this document details finding $\frac{d}{dt}[\norm{\vec{x}(t)}]$.)\\
+	Which lets us write $\kappa$ in terms of derivatives of $\vec{B}$:
+	$$\kappa_{i}(t) = \frac{\vec{B}_{i}''(t)}{\norm{\vec{B}_{i}'(t)}^{2}} - \frac{(\vec{B}_{i}'(t)\cdot\vec{B}_{i}''(t))\vec{B}_{i}'(t)}{\norm{\vec{B}_{i}'(t)}^{4}}$$
+	
+	If our spline is to be $G^{2}$ continuous, we have the condition
+	$$\kappa_{i}(0) = \kappa_{i-1}(1)$$
+	We'll use this to find a relationship between $c_{i}$ and $d_{i}$.
+	\begin{gather*}
+		\kappa_{i}(0) = \kappa_{i-1}(1)\\
+		\frac{\vec{B}_{i}''(0)}{\norm{\vec{B}_{i}'(0)}^{2}} - \frac{(\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0)}{\norm{\vec{B}_{i}'(0)}^{4}} = \frac{\vec{B}_{i-1}''(1)}{\norm{\vec{B}_{i-1}'(1)}^{2}} - \frac{(\vec{B}_{i-1}'(1)\cdot\vec{B}_{i-1}''(1))\vec{B}_{i-1}'(1)}{\norm{\vec{B}_{i-1}'(1)}^{4}}\\
+		\frac{\vec{B}_{i}''(0)}{\norm{\vec{B}_{i}'(0)}^{2}} - \frac{(\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0)}{\norm{\vec{B}_{i}'(0)}^{4}} = \frac{d_{i}\vec{B}_{i}''(0)}{\norm{c_{i}\vec{B}_{i}'(0)}^{2}} - \frac{((c_{i}\vec{B}_{i}'(0))\cdot(d_{i}\vec{B}_{i}''(0)))(c_{i}\vec{B}_{i}'(0))}{\norm{c_{i}\vec{B}_{i}'(0)}^{4}}\\
+		\frac{\vec{B}_{i}''(0)}{\norm{\vec{B}_{i}'(0)}^{2}} - \frac{(\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0)}{\norm{\vec{B}_{i}'(0)}^{4}} = \frac{d_{i}\vec{B}_{i}''(0)}{c_{i}^{2}\norm{\vec{B}_{i}'(0)}^{2}} - \frac{c_{i}^{2}d_{i}(\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0)}{c_{i}^{4}\norm{\vec{B}_{i}'(0)}^{4}}\\
+		\norm{\vec{B}_{i}'(0)}^{2}\vec{B}_{i}''(0) - (\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0) = \frac{d_{i}}{c_{i}^{2}}\norm{\vec{B}_{i}'(0)}^{2}\vec{B}_{i}''(0) - \frac{d_{i}}{c_{i}^{2}}(\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0)\\
+		c_{i}^{2}(\norm{\vec{B}_{i}'(0)}^{2}\vec{B}_{i}''(0) - (\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0)) = d_{i}(\norm{\vec{B}_{i}'(0)}^{2}\vec{B}_{i}''(0) - (\vec{B}_{i}'(0)\cdot\vec{B}_{i}''(0))\vec{B}_{i}'(0))\\
+		c_{i}^{2} = d_{i}
+	\end{gather*}
+
+	So whatever we decide to set our constants to, that relationship must hold
+	for our spline to be $G^{2}$ continuous.
+
+	Our ultimate goal is to make sure if we come into a spline too fast, we
+	don't overshoot it. In that sense, we should reduce our speed if the next
+	spline is short in comparison to the previous spline. To that end, we'll try
+	$$c_{i} = \frac{w_{i-1}}{w_{i}} = \frac{\norm{\vec{K}_{i}-\vec{K}_{i-1}}}{\norm{\vec{K}_{i+1}-\vec{K}_{i}}}$$
+
+	And our final constraints become
+	\begin{align*}
+		c_{i}\vec{B}_{i}'(0) &= \vec{B}_{i-1}'(1)\nonumber\\
+		c_{i}^{2}\vec{B}_{i}''(0) &= \vec{B}_{i-1}''(1)\nonumber
+	\end{align*}
+
+	Now that we have our constraints fully defined, we basically just do the
+	same as before. The first step then is to find a replacement for equation (4)
+	\begin{equation}
+		\vec{P}_{2,i-1}=\vec{K}_{i}-c_{i}(\vec{P}_{1,i}-\vec{K}_{i})
+	\end{equation}
+	And a replacement for equation (5):
+	\begin{align}
+		c_{i}^{2}(\vec{K}_{i} - 2\vec{P}_{1,i} + \vec{P}_{2,i}) &= \vec{P}_{1,i-1} - 2\vec{P}_{2,i-1} + \vec{K}_{i}\nonumber\\
+		c_{i}^{2}\vec{K}_{i} - 2c_{i}^{2}\vec{P}_{1,i} + c_{i}^{2}\vec{P}_{2,i} &= \vec{P}_{1,i-1} - 2\vec{P}_{2,i-1} + \vec{K}_{i}\nonumber\\
+		-\vec{P}_{1,i-1} + 2\vec{P}_{2,i-1} + (c_{i}^{2} - 1)\vec{K}_{i} - 2c_{i}^{2}\vec{P}_{1,i} + c_{i}^{2}\vec{P}_{2,i} &= \vec{0}
+	\end{align}
+
+	And now we basically follow through with the same algebra.
+	\begin{gather}
+		-\vec{P}_{1,i-1}+2\vec{P}_{2,i-1}+(c_{i}^{2}-1)\vec{K}_{i}-2c_{i}^{2}\vec{P}_{1,i}+c_{i}^{2}\vec{P}_{2,i} = \vec{0}\nonumber\\
+		-\vec{P}_{1,i-1}+2(\vec{K}_{i}-c_{i}(\vec{P}_{1,i}-\vec{K}_{i}))+(c_{i}^{2}-1)\vec{K}_{i}-2c_{i}^{2}\vec{P}_{1,i}+c_{i}^{2}(\vec{K}_{i+1}-c_{i+1}(\vec{P}_{1,i+1}-\vec{K}_{i+1})) = \vec{0}\nonumber\\
+		-\vec{P}_{1,i-1}+2\vec{K}_{i}-2c_{i}\vec{P}_{1,i}+2c_{i}\vec{K}_{i}+(c_{i}^{2}-1)\vec{K}_{i}-2c_{i}^{2}\vec{P}_{1,i}+c_{i}^{2}\vec{K}_{i+1}-c_{i+1}c_{i}^{2}\vec{P}_{1,i+1}+c_{i+1}c_{i}^{2}\vec{K}_{i+1} = \vec{0}\nonumber\\
+		\vec{P}_{1,i-1}+2c_{i}(1+c_{i})\vec{P}_{1,i}+c_{i+1}c_{i}^{2}\vec{P}_{1,i+1} = (1+2c_{i}+c_{i}^{2})\vec{K}_{i}+c_{i}^{2}(1+c_{i+1})\vec{K}_{i+1}
+	\end{gather}
+	That looks messy, but it's our replacement for equation (6). We'll also need
+	to replace equation (7).
+	
+	\begin{align}
+		\vec{K}_{1} - 2\vec{P}_{1,1} + \vec{P}_{2,1} &= \vec{0}\nonumber\\
+		\vec{K}_{1} - 2\vec{P}_{1,1} + (\vec{K}_{2}-c_{2}(\vec{P}_{1,2}-\vec{K}_{2})) &= \vec{0}\nonumber\\
+		\vec{K}_{1} - 2\vec{P}_{1,1} + \vec{K}_{2}-c_{2}\vec{P}_{1,2}+c_{2}\vec{K}_{2} &= \vec{0}\nonumber\\
+		2\vec{P}_{1,1}+c_{2}\vec{P}_{1,2}&=\vec{K}_{1}+(1+c_{2})\vec{K}_{2}
+	\end{align}
+	And equation (8).
+	\begin{align*}
+		\vec{P}_{1,n-1}-2\vec{P}_{2,n-1}+\vec{K}_{n}&=\vec{0}\\
+		\vec{P}_{1,n-1}-2(\vec{K}_{n}-c_{n}(\vec{P}_{1,n}-\vec{K}_{n}))+\vec{K}_{n}&=\vec{0}\\
+		\vec{P}_{1,n-1}-2\vec{K}_{n}+2c_{n}\vec{P}_{1,n}-2c_{n}\vec{K}_{n}+\vec{K}_{n}&=\vec{0}\\
+		\vec{P}_{1,n}&=\frac{2c_{n}+1}{2c_{n}}\vec{K}_{n}-\frac{1}{2c_{n}}\vec{P}_{1,n-1}
+	\end{align*}
+	\begin{gather}
+		\vec{P}_{1,n-2}+2c_{n-1}(1+c_{n-1})\vec{P}_{1,n-1}+c_{n}c_{n-1}^{2}\vec{P}_{1,n} = (1+2c_{n-1}+c_{n-1}^{2})\vec{K}_{n-1}+c_{n-1}^{2}(1+c_{n})\vec{K}_{n}\nonumber\\
+		\vec{P}_{1,n-2}+2c_{n-1}(1+c_{n-1})\vec{P}_{1,n-1}+c_{n}c_{n-1}^{2}(\frac{2c_{n}+1}{2c_{n}}\vec{K}_{n}-\frac{1}{2c_{n}}\vec{P}_{1,n-1}) = (1+2c_{n-1}+c_{n-1}^{2})\vec{K}_{n-1}+c_{n-1}^{2}(1+c_{n})\vec{K}_{n}\nonumber\\
+		\vec{P}_{1,n-2}+2c_{n-1}(1+c_{n-1})\vec{P}_{1,n-1}+c_{n-1}^{2}(c_{n}+\frac{1}{2})\vec{K}_{n}-\frac{1}{2}c_{n-1}^{2}\vec{P}_{1,n-1} = (1+2c_{n-1}+c_{n-1}^{2})\vec{K}_{n-1}+c_{n-1}^{2}(1+c_{n})\vec{K}_{n}\nonumber\\
+		\vec{P}_{1,n-2}+(2c_{n-1}+\frac{3}{2}c_{n-1}^{2})\vec{P}_{1,n-1} = (1+2c_{n-1}+c_{n-1}^{2})\vec{K}_{n-1}+\frac{1}{2}c_{n-1}^{2}\vec{K}_{n}
+	\end{gather}
+	
+	Those are some gross-looking equations, but they're not all that complex.
+	We'll use equations (13), (12), and (14) for our new matrix.
+	\begin{align*}
+		2\vec{P}_{1,1}+c_{2}\vec{P}_{1,2}&=\vec{K}_{1}+(1+c_{2})\vec{K}_{2}\\
+		\vec{P}_{1,i-1}+2(c_{i}+c_{i}^{2})\vec{P}_{1,i}+c_{i+1}c_{i}^{2}\vec{P}_{1,i+1} &= (1+2c_{i}+c_{i}^{2})\vec{K}_{i}+c_{i}^{2}(1+c_{i+1})\vec{K}_{i+1}\\
+		\vec{P}_{1,n-2}+(2c_{n-1}+\frac{3}{2}c_{n-1}^{2})\vec{P}_{1,n-1} &= (1+2c_{n-1}+c_{n-1}^{2})\vec{K}_{n-1}+\frac{1}{2}c_{n-1}^{2}\vec{K}_{n}
+	\end{align*}
+	An important note here is that these equations should decompose into (7),
+	(6), and (8) respectively when all of our constants are equal to 1 because
+	that was our original problem. It's not too hard to verify that that is the
+	case.
+
+	Now we put everything into matrix form:
+	\begin{equation}
+		\begin{split}
+			\begin{pmatrix}
+				2 & c_{2} &   &   &   & 0 \\
+				1 & 2(c_{2}+c_{2}^{2}) & c_{3}c_{2}^{2} \\
+				\ & 1 & 2(c_{3}+c_{3}^{2}) & c_{4}c_{3}^{2} \\
+				\ & \ & \ddots & \ddots & \ddots \\
+				\ & \ & \ & 1 & 2(c_{n-2}+c_{n-2}^{2}) & c_{n-1}c_{n-2}^{2} \\
+				0 & \ & \ & \ & 1 & 2c_{n-1}+\frac{3}{2}c_{n-1}^{2}
+			\end{pmatrix}
+			\begin{pmatrix}
+				\vec{P}_{1,1} \\
+				\vec{P}_{1,2} \\
+				\vdots \\
+				\vec{P}_{1,n-1}
+			\end{pmatrix}
+			=\\
+			\begin{pmatrix}
+				\vec{K}_{1}+(1+c_{2})\vec{K}_{2}\\
+				(1+2c_{2}+c_{2}^{2})\vec{K}_{2}+c_{2}^{2}(1+c_{3})\vec{K}_{3}\\
+				(1+2c_{3}+c_{3}^{2})\vec{K}_{3}+c_{3}^{2}(1+c_{4})\vec{K}_{4}\\
+				\vdots \\
+				(1+2c_{n-2}+c_{n-2}^{2})\vec{K}_{n-2}+c_{n-2}^{2}(1+c_{n-1})\vec{K}_{n-1}\\
+				(1+2c_{n-1}+c_{n-1}^{2})\vec{K}_{n-1}+\frac{1}{2}c_{n-1}^{2}\vec{K}_{n}\\
+			\end{pmatrix}
+		\end{split}
+	\end{equation}
+	A little messy-looking, but fairly easy to implement. We're still using the
+	Thomas algorithm because we still have a tridiagonal matrix.
+
+	And of course, once we have all the $\vec{P}_{1}$'s, we plug them into
+	(11) and (9) to get the $\vec{P}_{2}$'s. And finally we have a good-looking
+	spline that is built provided only knots.
+
+	\clearpage
+
+	$$\frac{d}{dt}\norm{\vec{x}(t)}$$
+	$$\frac{d}{dt}\sqrt{\sum_{i=0}^{n}x_{i}(t)^{2}}$$
+	$$\frac{d}{dt}(\sum_{i=0}^{n}x_{i}(t)^{2})^{\frac{1}{2}}$$
+	$$\frac{1}{2}(\sum_{i=0}^{n}x_{i}(t)^{2})^{-\frac{1}{2}} \cdot \frac{d}{dt}\sum_{i=0}^{n}x_{i}(t)^{2}$$
+	$$\frac{1}{2}\frac{1}{\norm{\vec{x}(t)}} \cdot \frac{d}{dt}\sum_{i=0}^{n}x_{i}(t)^{2}$$
+	$$\frac{1}{2}\frac{1}{\norm{\vec{x}(t)}} \cdot \sum_{i=0}^{n}\frac{d}{dt}[x_{i}(t)^{2}]$$
+	$$\frac{1}{2}\frac{1}{\norm{\vec{x}(t)}} \cdot \sum_{i=0}^{n}2x_{i}(t)x_{i}'(t)$$
+	$$\frac{1}{2}\frac{1}{\norm{\vec{x}(t)}} \cdot 2\sum_{i=0}^{n}x_{i}(t)x_{i}'(t)$$
+	$$\frac{1}{\norm{\vec{x}(t)}} \cdot \sum_{i=0}^{n}x_{i}(t)x_{i}'(t)$$
+	$$\frac{\vec{x}(t)\cdot\vec{x}'(t)}{\norm{\vec{x}(t)}}$$
+	$$\frac{d}{dt}\norm{\vec{x}(t)} = \frac{\vec{x}(t)\cdot\vec{x}'(t)}{\norm{\vec{x}(t)}}$$
 \end{document}
