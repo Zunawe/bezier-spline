@@ -1,6 +1,6 @@
 {
   "name": "bezier-spline",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Creates splines using Bezier curves over an arbitrary number of dimensions.",
   "keywords": [
     "spline",
