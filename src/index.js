@@ -10,12 +10,13 @@ class BezierSpline {
    * @param {number[][]} knots A list of points of equal dimension that the spline will pass through.
    */
   constructor (knots) {
-    const vec = vecn.getVecType(knots[0].length)
-    knots = knots.map((v) => vec(v))
-    this.knots = knots
-    this.recalculate()
+    this.setKnots(knots)
   }
 
+  /**
+   * Recalculates the control points of the spline. Runs on the order of O(n)
+   * operations where n is the number of knots.
+   */
   recalculate () {
     const n = this.knots.length
     this.curves = []
@@ -62,6 +63,19 @@ class BezierSpline {
   }
 
   /**
+   * The easiest way to change the spline's knots. Knots are kept as special
+   * vector types, so setting an entire knot may break the program. Alternately,
+   * you can read the documentation for vecn and manipulate the knots yourself.
+   * @param {number[][]} newKnots A list of points of equal dimension that the spline will pass through.
+   */
+  setKnots (newKnots) {
+    const vec = vecn.getVecType(newKnots[0].length)
+    newKnots = newKnots.map((v) => vec(v))
+    this.knots = newKnots
+    this.recalculate()
+  }
+
+  /**
    * Gets all the points on the spline that match the query.
    * @example
    * spline.getPoints(0, 10)   // Returns all points on the spline where x = 10
@@ -83,6 +97,16 @@ class BezierSpline {
   }
 }
 
+/**
+ * Solves a matrix equation Ax = d for x where A is a tridiagonal square matrix.
+ * @private
+ * @param {number[]|number[][]} a The (i-1)th entry of each row. The first element does not exist, but must still be input as a number or vector. 0 is adequate.
+ * @param {number[]|number[][]} b The diagonal entry of each row.
+ * @param {number[]|number[][]} c The (i+1)th entry of each row. The last element does not exist, but must still be input as a number or vector. 0 is adequate.
+ * @param {number[]|number[][]} d The resultant vector in the equation.
+ *
+ * @returns {number[][]}
+ */
 function thomas (a, b, c, d) {
   const dim = d[0].length ? d[0].length : 1
   const vec = vecn.getVecType(dim)
