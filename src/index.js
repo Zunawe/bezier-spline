@@ -1,5 +1,21 @@
-const BezierCurve = require('./curve.js')
 const vecn = require('vecn')
+
+const BezierCurve = require('./curve')
+const thomas = require('./thomas')
+
+/**
+ * A function that calculates the weight to be assigned to the "speed" of curve `i`.
+ * @callback weightsCallback
+ * @param {number} i The index of the knot at the end of the curve to be weighted. Integers on [1, n-1].
+ * @param {number[][]} knots The knots provided to the spline. More specifically, each point is a `vecn` (see module of the same name).
+ *
+ * @returns {number} The scalar that will modify the "starting speed" at the start of this curve. Higher numbers means the curve is more strongly pulled in the direction of tangency at the first knot in the curve.
+ */
+const distanceRatio = (i, knots) => {
+  let w1 = knots[i].minus(knots[i - 1]).magnitude
+  let w2 = knots[i + 1].minus(knots[i]).magnitude
+  return w1 / w2
+}
 
 /**
  * Creates cubic splines given knots.
@@ -8,8 +24,10 @@ class BezierSpline {
   /**
    * Creates a new spline.
    * @param {number[][]} knots A list of points of equal dimension that the spline will pass through.
+   * @param {weightsCallback|number[]} weights A callback that calculates weights for a given segment or precalculated weights in an array. The first element of the array will be ignored.
    */
-  constructor (knots) {
+  constructor (knots, weights = distanceRatio) {
+    this.weights = weights
     this.setKnots(knots)
   }
 
@@ -23,9 +41,7 @@ class BezierSpline {
 
     let k = new Array(n)
     for (let i = 1; i < n - 1; ++i) {
-      let w1 = this.knots[i].minus(this.knots[i - 1]).magnitude
-      let w2 = this.knots[i + 1].minus(this.knots[i]).magnitude
-      k[i] = (w1 / w2)
+      k[i] = Array.isArray(this.weights) ? this.weights[i] : this.weights(i, this.knots)
     }
 
     let a = new Array(n - 1)
@@ -95,45 +111,6 @@ class BezierSpline {
       return acc.some((p) => p.every((n, i) => Math.min(n, point[i]) / Math.max(n, point[i]) > 0.999)) ? acc : acc.concat([point])
     }, []).map((v) => Array.from(v))
   }
-}
-
-/**
- * Solves a matrix equation Ax = d for x where A is a tridiagonal square matrix.
- * @private
- * @param {number[]|number[][]} a The (i-1)th entry of each row. The first element does not exist, but must still be input as a number or vector. 0 is adequate.
- * @param {number[]|number[][]} b The diagonal entry of each row.
- * @param {number[]|number[][]} c The (i+1)th entry of each row. The last element does not exist, but must still be input as a number or vector. 0 is adequate.
- * @param {number[]|number[][]} d The resultant vector in the equation.
- *
- * @returns {number[][]}
- */
-function thomas (a, b, c, d) {
-  const dim = d[0].length ? d[0].length : 1
-  const vec = vecn.getVecType(dim)
-  const n = d.length
-
-  a = a.map((x) => vec(x))
-  b = b.map((x) => vec(x))
-  c = c.map((x) => vec(x))
-  d = d.map((x) => vec(x))
-
-  let dp = []
-  let cp = []
-
-  cp.push(c[0].div(b[0]))
-  dp.push(d[0].div(b[0]))
-  for (let i = 1; i < n; ++i) {
-    cp.push(c[i].div(b[i].minus(a[i].times(cp[i - 1]))))
-    dp.push((d[i].minus(a[i].times(dp[i - 1]))).div(b[i].minus(a[i].times(cp[i - 1]))))
-  }
-
-  let x = new Array(n)
-  x[n - 1] = dp[n - 1]
-  for (let i = n - 2; i >= 0; --i) {
-    x[i] = dp[i].minus(cp[i].times(x[i + 1]))
-  }
-
-  return x
 }
 
 module.exports = BezierSpline
