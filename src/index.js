@@ -26,9 +26,13 @@ class BezierSpline {
    * @param {number[][]} knots A list of points of equal dimension that the spline will pass through.
    * @param {weightsCallback|number[]} weights A callback that calculates weights for a given segment or precalculated weights in an array. The first element of the array will be ignored.
    */
-  constructor (knots, weights = distanceRatio) {
+  constructor (knots = [], weights = distanceRatio) {
     this.weights = weights
-    this.setKnots(knots)
+    this.knots = []
+    this.curves = []
+    if (knots.length > 0) {
+      this.setKnots(knots)
+    }
   }
 
   /**
