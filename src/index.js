@@ -37,7 +37,9 @@ class BezierSpline {
    */
   recalculate () {
     const n = this.knots.length
+
     this.curves = []
+    if (n < 3) return
 
     let k = new Array(n)
     for (let i = 1; i < n - 1; ++i) {
